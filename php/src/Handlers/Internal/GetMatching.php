@@ -22,7 +22,7 @@ class GetMatching extends AbstractHttpHandler
         ResponseInterface $response,
     ): ResponseInterface {
         // MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-        $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 30');
+        $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id IS NULL');
         $stmt->execute();
         $rides = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
