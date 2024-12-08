@@ -3,6 +3,7 @@ ALTER TABLE `chair_locations` ADD SPATIAL INDEX idx_point(point);
 ALTER TABLE `rides` ADD COLUMN `pickup_point` POINT GENERATED  ALWAYS AS (POINT(pickup_latitude, pickup_longitude)) STORED NOT NULL COMMENT '配車位置';
 ALTER TABLE `rides` ADD SPATIAL INDEX idx_pickup_point(pickup_point);
 
+DROP TABLE IF EXISTS chair_distances;
 CREATE TABLE chair_distances
 (
     chair_id VARCHAR(26) NOT NULL COMMENT '椅子ID',
