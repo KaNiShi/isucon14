@@ -81,27 +81,7 @@ class GetNearbyChairs extends AbstractHttpHandler
         ]);
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare(
-                <<<SQL
-SELECT chairs.*
-FROM chairs
-LEFT JOIN rides ON chairs.id = rides.chair_id
-LEFT JOIN (
-    SELECT 
-        ride_id,
-        status
-    FROM ride_statuses
-    WHERE (ride_id, created_at) IN (
-        SELECT ride_id, MAX(created_at)
-        FROM ride_statuses
-        GROUP BY ride_id
-    )
-) ride_statuses ON rides.id = ride_statuses.ride_id
-WHERE
-    chairs.is_active = 1
-        AND ride_statuses.status = "COMPLETED"
-SQL
-            );
+            $stmt = $this->db->prepare('SELECT chairs.*, rides.id AS ride_id FROM chairs LEFT JOIN rides ON chairs.id = rides.chair_id WHERE chairs.is_active = 1 ORDER BY chairs.id, rides.created_at DESC');
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             // 椅子ごとのライド情報を整理
@@ -109,20 +89,44 @@ SQL
             foreach ($results as $row) {
                 if (!isset($chairsById[$row['id']])) {
                     // 椅子情報をオブジェクトに変換して格納
-                    $chairsById[$row['id']] = new Chair(
-                        id: $row['id'],
-                        ownerId: $row['owner_id'],
-                        name: $row['name'],
-                        accessToken: $row['access_token'],
-                        model: $row['model'],
-                        isActive: (bool)$row['is_active'],
-                        createdAt: $row['created_at'],
-                        updatedAt: $row['updated_at'],
-                    );
+                    $chairsById[$row['id']] = [
+                        'chair' => new Chair(
+                            id: $row['id'],
+                            ownerId: $row['owner_id'],
+                            name: $row['name'],
+                            accessToken: $row['access_token'],
+                            model: $row['model'],
+                            isActive: (bool)$row['is_active'],
+                            createdAt: $row['created_at'],
+                            updatedAt: $row['updated_at'],
+                        ),
+                        'rides' => [],
+                    ];
+                }
+                // ライド情報を追加
+                if ($row['ride_id'] !== null) {
+                    $chairsById[$row['id']]['rides'][] = [
+                        'id' => $row['ride_id'],
+                    ];
                 }
             }
             $nearbyChairs = [];
-            foreach ($chairsById as $chair) {
+            foreach ($chairsById as $chairData) {
+                $chair = $chairData['chair'];
+                $rides = $chairData['rides'];
+                $skip = false;
+                foreach ($rides as $ride) {
+                    // 過去にライドが存在し、かつ、それが完了していない場合はスキップ
+                    $status = $this->getLatestRideStatus($this->db, $ride['id']);
+                    if ($status !== 'COMPLETED') {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if ($skip) {
+                    continue;
+                }
+
                 // 最新の位置情報を取得
                 $stmt = $this->db->prepare(
                     'SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1'
