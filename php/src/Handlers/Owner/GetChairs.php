@@ -48,7 +48,7 @@ SELECT id,
        access_token,
        model,
        is_active,
-       created_at,
+       chairs.created_at,
        updated_at,
        IFNULL(chair_distances.total_distance, 0) AS total_distance,
        chair_distances.created_at AS total_distance_updated_at
