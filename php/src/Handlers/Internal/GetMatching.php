@@ -76,7 +76,7 @@ ORDER BY distance
                     continue;
                 }
 
-                $newCandidates = $candidate;
+                $newCandidates[] = $candidate;
                 $scores[] = $score;
             }
 
