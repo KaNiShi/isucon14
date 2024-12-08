@@ -46,10 +46,13 @@ CREATE TABLE chair_locations
   chair_id   VARCHAR(26) NOT NULL COMMENT '椅子ID',
   latitude   INTEGER     NOT NULL COMMENT '経度',
   longitude  INTEGER     NOT NULL COMMENT '緯度',
+  point      POINT GENERATED  ALWAYS AS (POINT(latitude, longitude)) STORED NOT NULL COMMENT '位置',
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '登録日時',
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  SPATIAL INDEX idx_point(point)
 )
   COMMENT = '椅子の現在位置情報テーブル';
+CREATE INDEX idx_chair_id ON chair_locations(`chair_id`);
 
 DROP TABLE IF EXISTS users;
 CREATE TABLE users
@@ -88,12 +91,14 @@ CREATE TABLE rides
   chair_id              VARCHAR(26) NULL     COMMENT '割り当てられた椅子ID',
   pickup_latitude       INTEGER     NOT NULL COMMENT '配車位置(経度)',
   pickup_longitude      INTEGER     NOT NULL COMMENT '配車位置(緯度)',
+  pickup_point          POINT GENERATED  ALWAYS AS (POINT(pickup_latitude, pickup_longitude)) STORED NOT NULL COMMENT '配車位置',
   destination_latitude  INTEGER     NOT NULL COMMENT '目的地(経度)',
   destination_longitude INTEGER     NOT NULL COMMENT '目的地(緯度)',
   evaluation            INTEGER     NULL     COMMENT '評価',
   created_at            DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '要求日時',
   updated_at            DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '状態更新日時',
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  SPATIAL INDEX idx_pickup_point(pickup_point)
 )
   COMMENT = 'ライド情報テーブル';
 CREATE INDEX idx_chair_update ON rides(chair_id, updated_at);
