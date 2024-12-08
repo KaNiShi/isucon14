@@ -75,11 +75,11 @@ ORDER BY distance
             $newCandidates = [];
             $scores = [];
             foreach ($candidates as $candidate) {
-                $score = $distance / $candidate['speed'];
-                if ($score < 1.2) {
+                $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
+                if ($score < 1.5) {
                     continue;
                 }
-                $newCandidates[] = ['id' => $candidate['id'], 'distance' => $candidate['distance']];
+
                 $scores[] = $score;
             }
 
