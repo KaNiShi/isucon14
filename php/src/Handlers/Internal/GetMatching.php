@@ -32,13 +32,9 @@ class GetMatching extends AbstractHttpHandler
 
         foreach ($rides as $ride) {
             $stmt = $this->db->prepare('
-SELECT chairs.*, chair_models.speed, ST_Distance((SELECT pickup_point FROM rides WHERE id = ?), a.point) AS distance
+SELECT chairs.*, chair_models.speed, ST_Distance((SELECT pickup_point FROM rides WHERE id = ?), chair_distances.point) AS distance
 FROM chairs
-JOIN (
-    SELECT chair_locations.*
-    FROM chair_locations
-    JOIN (SELECT chair_id, MAX(created_at) AS created_at FROM chair_locations GROUP BY chair_id) AS tmp ON chair_locations.chair_id = tmp.chair_id AND chair_locations.created_at = tmp.created_at
-) AS a ON chairs.id = a.chair_id
+JOIN chair_distances ON chairs.id = chair_distances.chair_id
 JOIN chair_models ON chairs.model = chair_models.name
 WHERE is_active = TRUE
 ORDER BY distance
