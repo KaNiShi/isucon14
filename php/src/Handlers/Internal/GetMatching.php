@@ -29,30 +29,30 @@ class GetMatching extends AbstractHttpHandler
         if (!$ride) {
             return $this->writeNoContent($response);
         }
-        for ($i = 0; $i < 10; $i++) {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1'
-            );
-            $stmt->execute();
-            $matched = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$matched) {
-                return $this->writeNoContent($response);
-            }
+
+        $stmt = $this->db->prepare(
+            'SELECT * FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 10'
+        );
+        $stmt->execute();
+        $matched = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$matched) {
+            return $this->writeNoContent($response);
+        }
+
+        foreach ($matched as $item) {
             $stmt = $this->db->prepare(
                 'SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE'
             );
-            $stmt->execute([$matched['id']]);
+            $stmt->execute([$item['id']]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $empty = $result['COUNT(*) = 0'];
             if ($empty) {
-                break;
+                $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
+                $stmt->execute([$item['id'], $ride['id']]);
+                return $this->writeNoContent($response);
             }
         }
-        if (!$empty) {
-            return $this->writeNoContent($response);
-        }
-        $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
-        $stmt->execute([$matched['id'], $ride['id']]);
+
         return $this->writeNoContent($response);
     }
 }
