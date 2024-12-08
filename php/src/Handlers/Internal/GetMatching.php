@@ -72,7 +72,7 @@ ORDER BY distance
             $scores = [];
             foreach ($candidates as $candidate) {
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 3.5) {
+                if ($score < 4.5) {
                     continue;
                 }
 
@@ -80,15 +80,12 @@ ORDER BY distance
                 $scores[] = $score;
             }
 
-            if ($newCandidates === []) {
-                $item = $candidates[0];
-            } else {
+            if (count($newCandidates) !== 0) {
                 array_multisort($scores, SORT_ASC, SORT_NUMERIC, $newCandidates);
                 $item = $newCandidates[0];
+                $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
+                $stmt->execute([$item['id'], $ride['id']]);
             }
-
-            $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
-            $stmt->execute([$item['id'], $ride['id']]);
         }
 
         return $this->writeNoContent($response);
