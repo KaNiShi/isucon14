@@ -32,7 +32,7 @@ class GetMatching extends AbstractHttpHandler
 
         foreach ($rides as $ride) {
             $stmt = $this->db->prepare('
-SELECT *, ST_Distance((SELECT pickup_point FROM rides WHERE id = ?), a.point) AS distance
+SELECT chairs.*, ST_Distance((SELECT pickup_point FROM rides WHERE id = ?), a.point) AS distance
 FROM chairs
 JOIN (
     SELECT chair_locations.*
