@@ -97,6 +97,7 @@ CREATE TABLE rides
   PRIMARY KEY (id)
 )
   COMMENT = 'ライド情報テーブル';
+CREATE INDEX idx_user_id ON rides(user_id, created_at);
 CREATE INDEX idx_chair_update ON rides(chair_id, updated_at);
 CREATE INDEX idx_chair_create ON rides(chair_id, created_at);
 
