@@ -114,6 +114,15 @@ class GetNearbyChairs extends AbstractHttpHandler
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $ride_ids = array_map(fn($row) => $row['ride_id'], $results);
+            $stmt = $this->db->prepare(sprintf('SELECT * FROM chair_locations WHERE chair_id IN (%s) ORDER BY created_at DESC', implode(', ', array_map(fn($chairData) => '"' . $chairData['chair']->id . '"', $chairsById))));
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $chairLocationResults = array_reduce($results, function (array $groups, array $row) {
+                if (!isset($groups[$row['chair_id']])) {
+                    $groups[$row['chair_id']] = $row;
+                }
+                return $groups;
+            }, []);
             $nearbyChairs = [];
             foreach ($chairsById as $chairData) {
                 $chair = $chairData['chair'];
@@ -131,11 +140,7 @@ class GetNearbyChairs extends AbstractHttpHandler
                 }
 
                 // 最新の位置情報を取得
-                $stmt = $this->db->prepare(
-                    'SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1'
-                );
-                $stmt->execute([$chair->id]);
-                $chairLocationResult = $stmt->fetch(PDO::FETCH_ASSOC);
+                $chairLocationResult = $chairLocationResults[$chair->id] ?? null;
                 if (!$chairLocationResult) {
                     continue;
                 }
