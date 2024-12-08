@@ -112,14 +112,14 @@ SQL
             if ($rideCount === 1) {
                 // 初回利用で、初回利用クーポンがあれば必ず使う
                 $stmt = $this->db->prepare(
-                    'SELECT * FROM coupons WHERE user_id = ? AND code = \'CP_NEW2024\' AND used_by IS NULL FOR UPDATE'
+                    'SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? AND code = \'CP_NEW2024\' FOR UPDATE'
                 );
                 $stmt->execute([$user->id]);
                 $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($coupon === false) {
                     // 無ければ他のクーポンを付与された順番に使う
                     $stmt = $this->db->prepare(
-                        'SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE'
+                        'SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1 FOR UPDATE'
                     );
                     $stmt->execute([$user->id]);
                     $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -138,7 +138,7 @@ SQL
             } else {
                 // 他のクーポンを付与された順番に使う
                 $stmt = $this->db->prepare(
-                    'SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE'
+                    'SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1 FOR UPDATE'
                 );
                 $stmt->execute([$user->id]);
                 $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
