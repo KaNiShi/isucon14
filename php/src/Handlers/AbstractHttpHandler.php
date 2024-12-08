@@ -49,6 +49,17 @@ abstract class AbstractHttpHandler
         return $result['status'];
     }
 
+    protected function getLatestRideStatuses(PDO $db, array $rideIds): string
+    {
+        $stmt = $db->prepare('SELECT status FROM ride_statuses WHERE ride_id = (?) ORDER BY created_at DESC LIMIT 1');
+        $stmt->execute([implode(', ', $rideIds)]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$result) {
+            return '';
+        }
+        return $result['status'];
+    }
+
     protected function calculateSale(
         Ride $req
     ): int {
