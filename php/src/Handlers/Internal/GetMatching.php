@@ -48,11 +48,10 @@ ORDER BY distance LIMIT 10
                 return $this->writeNoContent($response);
             }
 
-            $stmt = $this->db->prepare(
-                'SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE'
-            );
-
             foreach ($matched as $item) {
+                $stmt = $this->db->prepare(
+                    'SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE'
+                );
                 $stmt->execute([$item['id']]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 $empty = $result['COUNT(*) = 0'];
