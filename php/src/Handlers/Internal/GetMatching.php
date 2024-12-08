@@ -40,7 +40,7 @@ JOIN (
     JOIN (SELECT chair_id, MAX(created_at) AS created_at FROM chair_locations GROUP BY chair_id) AS tmp ON chair_locations.chair_id = tmp.chair_id AND chair_locations.created_at = tmp.created_at
 ) AS a ON chairs.id = a.chair_id
 WHERE is_active = TRUE
-ORDER BY distance LIMIT 100
+ORDER BY distance
             ');
             $stmt->execute([$ride['id']]);
             $matched = $stmt->fetchAll(PDO::FETCH_ASSOC);
