@@ -38,7 +38,7 @@ class GetNotification extends AbstractHttpHandler
             $ride = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$ride) {
                 $this->db->rollBack();
-                return $this->writeJson($response, new ChairGetNotification200Response(['retry_after_ms' => 30]));
+                return $this->writeJson($response, new ChairGetNotification200Response(['retry_after_ms' => 200]));
             }
 
             $stmt = $this->db->prepare(
