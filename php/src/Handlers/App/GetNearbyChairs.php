@@ -110,6 +110,10 @@ class GetNearbyChairs extends AbstractHttpHandler
                     ];
                 }
             }
+            $stmt = $this->db->prepare('SELECT ride_id FROM ride_statuses WHERE status = "COMPLETED"');
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $ride_ids = array_map(fn($row) => $row['ride_id'], $results);
             $nearbyChairs = [];
             foreach ($chairsById as $chairData) {
                 $chair = $chairData['chair'];
@@ -117,8 +121,7 @@ class GetNearbyChairs extends AbstractHttpHandler
                 $skip = false;
                 foreach ($rides as $ride) {
                     // 過去にライドが存在し、かつ、それが完了していない場合はスキップ
-                    $status = $this->getLatestRideStatus($this->db, $ride['id']);
-                    if ($status !== 'COMPLETED') {
+                    if (!in_array($ride['id'], $ride_ids, true)) {
                         $skip = true;
                         break;
                     }
