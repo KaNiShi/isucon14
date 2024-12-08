@@ -73,7 +73,7 @@ ORDER BY distance
             $newCandidates = [];
             $scores = [];
             foreach ($candidates as $candidate) {
-                $this->logger->debug(print_r([
+                $this->logger->info(print_r([
                     'distance' => $distance,
                     'speed' => $candidate['speed'],
                     'c_distance' => $candidate['distance'],
