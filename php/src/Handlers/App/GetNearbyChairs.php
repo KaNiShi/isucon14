@@ -81,32 +81,30 @@ class GetNearbyChairs extends AbstractHttpHandler
         ]);
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare('SELECT chairs.*, rides.id AS ride_id FROM chairs JOIN rides ON chairs.id = rides.chair_id ORDER BY rides.created_at DESC');
+            $stmt = $this->db->prepare('SELECT * FROM chairs');
             $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $chairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $nearbyChairs = [];
-            $chairs = array_reduce($results, function (array $groups, array $row) {
-                $groups[$row['id']][] = $row;
-                return $groups;
-            }, []);
-            foreach ($chairs as $results) {
+            foreach ($chairs as $chair) {
                 $chair = new Chair(
-                    id: $results[0]['id'],
-                    ownerId: $results[0]['owner_id'],
-                    name: $results[0]['name'],
-                    accessToken: $results[0]['access_token'],
-                    model: $results[0]['model'],
-                    isActive: (bool)$results[0]['is_active'],
-                    createdAt: $results[0]['created_at'],
-                    updatedAt: $results[0]['updated_at']
+                    id: $chair['id'],
+                    ownerId: $chair['owner_id'],
+                    name: $chair['name'],
+                    accessToken: $chair['access_token'],
+                    model: $chair['model'],
+                    isActive: (bool)$chair['is_active'],
+                    createdAt: $chair['created_at'],
+                    updatedAt: $chair['updated_at']
                 );
                 if (!$chair->isActive) {
                     continue;
                 }
+                $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id = ? ORDER BY created_at DESC');
+                $stmt->execute([$chair->id]);
                 $skip = false;
-                foreach ($results as $result) {
+                while($ride = $stmt->fetch(PDO::FETCH_ASSOC)){
                     // 過去にライドが存在し、かつ、それが完了していない場合はスキップ
-                    $status = $this->getLatestRideStatus($this->db, $result['ride_id']);
+                    $status = $this->getLatestRideStatus($this->db, $ride['id']);
                     if ($status !== 'COMPLETED') {
                         $skip = true;
                         break;
