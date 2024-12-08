@@ -81,28 +81,41 @@ class GetNearbyChairs extends AbstractHttpHandler
         ]);
         try {
             $this->db->beginTransaction();
-            $stmt = $this->db->prepare('SELECT * FROM chairs');
+            $stmt = $this->db->prepare('SELECT chairs.*, rides.id AS ride_id FROM chairs LEFT JOIN rides ON chairs.id = rides.chair_id WHERE chairs.is_active = 1 ORDER BY chairs.id, rides.created_at DESC');
             $stmt->execute();
-            $chairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $nearbyChairs = [];
-            foreach ($chairs as $chair) {
-                $chair = new Chair(
-                    id: $chair['id'],
-                    ownerId: $chair['owner_id'],
-                    name: $chair['name'],
-                    accessToken: $chair['access_token'],
-                    model: $chair['model'],
-                    isActive: (bool)$chair['is_active'],
-                    createdAt: $chair['created_at'],
-                    updatedAt: $chair['updated_at']
-                );
-                if (!$chair->isActive) {
-                    continue;
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // 椅子ごとのライド情報を整理
+            $chairsById = [];
+            foreach ($results as $row) {
+                if (!isset($chairsById[$row['id']])) {
+                    // 椅子情報をオブジェクトに変換して格納
+                    $chairsById[$row['id']] = [
+                        'chair' => new Chair(
+                            id: $row['id'],
+                            ownerId: $row['owner_id'],
+                            name: $row['name'],
+                            accessToken: $row['access_token'],
+                            model: $row['model'],
+                            isActive: (bool)$row['is_active'],
+                            createdAt: $row['created_at'],
+                            updatedAt: $row['updated_at'],
+                        ),
+                        'rides' => [],
+                    ];
                 }
-                $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id = ? ORDER BY created_at DESC');
-                $stmt->execute([$chair->id]);
+                // ライド情報を追加
+                if ($row['ride_id'] !== null) {
+                    $chairsById[$row['id']]['rides'][] = [
+                        'id' => $row['ride_id'],
+                    ];
+                }
+            }
+            $nearbyChairs = [];
+            foreach ($chairsById as $chairData) {
+                $chair = $chairData['chair'];
+                $rides = $chairData['rides'];
                 $skip = false;
-                while($ride = $stmt->fetch(PDO::FETCH_ASSOC)){
+                foreach ($rides as $ride) {
                     // 過去にライドが存在し、かつ、それが完了していない場合はスキップ
                     $status = $this->getLatestRideStatus($this->db, $ride['id']);
                     if ($status !== 'COMPLETED') {
