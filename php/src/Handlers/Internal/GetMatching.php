@@ -15,7 +15,6 @@ class GetMatching extends AbstractHttpHandler
 {
     public function __construct(
         private readonly PDO $db,
-        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -74,7 +73,7 @@ ORDER BY distance
             $scores = [];
             foreach ($candidates as $candidate) {
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 100) {
+                if ($score < 50) {
                     continue;
                 }
 

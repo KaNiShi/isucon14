@@ -56,5 +56,5 @@ return function (App $app, array $config) {
     );
 
     // internal handlers
-    $app->get('/api/internal/matching', new Handlers\Internal\GetMatching($database, $logger));
+    $app->get('/api/internal/matching', new Handlers\Internal\GetMatching($database));
 };
