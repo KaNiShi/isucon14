@@ -8,12 +8,14 @@ use IsuRide\Handlers\AbstractHttpHandler;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use PDO;
+use Psr\Log\LoggerInterface;
 
 // このAPIをインスタンス内から一定間隔で叩かせることで、椅子とライドをマッチングさせる
 class GetMatching extends AbstractHttpHandler
 {
     public function __construct(
         private readonly PDO $db,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -71,6 +73,12 @@ ORDER BY distance
             $newCandidates = [];
             $scores = [];
             foreach ($candidates as $candidate) {
+                $this->logger->debug(print_r([
+                    'distance' => $distance,
+                    'speed' => $candidate['speed'],
+                    'c_distance' => $candidate['distance'],
+                    'score' => $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'],
+                ], true));
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
                 if ($score < 100) {
                     continue;
