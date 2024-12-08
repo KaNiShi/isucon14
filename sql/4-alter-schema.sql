@@ -1,5 +1,3 @@
-ALTER TABLE `chair_locations` ADD COLUMN `point` POINT GENERATED ALWAYS AS (POINT(latitude, longitude)) STORED NOT NULL COMMENT '位置';
-ALTER TABLE `chair_locations` ADD SPATIAL INDEX idx_point(point);
 ALTER TABLE `rides` ADD COLUMN `pickup_point` POINT GENERATED ALWAYS AS (POINT(pickup_latitude, pickup_longitude)) STORED NOT NULL COMMENT '配車位置';
 ALTER TABLE `rides` ADD COLUMN `destination_point` POINT GENERATED ALWAYS AS (POINT(destination_latitude, destination_longitude)) STORED NOT NULL COMMENT '目的地';
 ALTER TABLE `rides` ADD SPATIAL INDEX idx_pickup_point(pickup_point);
@@ -12,6 +10,7 @@ CREATE TABLE chair_distances
     chair_location_id VARCHAR(26)   NOT NULL COMMENT '最新の現在位置情報ID',
     latitude   INTEGER     NOT NULL COMMENT '最新の経度',
     longitude  INTEGER     NOT NULL COMMENT '最新の緯度',
+    point POINT GENERATED ALWAYS AS (POINT(latitude, longitude)) STORED NOT NULL COMMENT '位置',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '登録日時',
     PRIMARY KEY (chair_id)
 );
