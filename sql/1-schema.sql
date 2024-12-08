@@ -140,4 +140,4 @@ CREATE TABLE coupons
 )
   COMMENT 'クーポンテーブル';
 
-CREATE INDEX idx_user_used_create ON coupons(used_by, user_id, created_at)
+CREATE INDEX idx_user_used_create ON coupons(used_by, user_id, created_at);
