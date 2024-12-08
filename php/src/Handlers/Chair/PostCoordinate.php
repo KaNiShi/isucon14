@@ -75,7 +75,7 @@ class PostCoordinate extends AbstractHttpHandler
             );
             $stmt->execute([
                 $chair->id,
-                $chair_distance['total_distance'],
+                $chair_distance['total_distance'] ?? 0,
                 $chairLocation['latitude'],
                 $latestChairLocation['latitude'],
                 $chairLocation['longitude'],
