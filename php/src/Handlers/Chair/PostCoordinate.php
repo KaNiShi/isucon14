@@ -48,39 +48,24 @@ class PostCoordinate extends AbstractHttpHandler
             $chairLocationId = new Ulid();
 
             $stmt = $this->db->prepare(
-                'SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1'
-            );
-            $stmt->execute([$chair->id]);
-            $latestChairLocation = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            $stmt = $this->db->prepare(
-                'INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)'
-            );
-            $stmt->execute([$chairLocationId, $chair->id, $req->getLatitude(), $req->getLongitude()]);
-
-            $stmt = $this->db->prepare(
-                'SELECT * FROM chair_locations WHERE id = ?'
-            );
-            $stmt->execute([$chairLocationId]);
-            $chairLocation = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            $stmt = $this->db->prepare(
                 'SELECT * FROM chair_distances WHERE chair_id = ?'
             );
             $stmt->execute([$chair->id]);
-            $chair_distance = $stmt->fetch(PDO::FETCH_ASSOC);
+            $latestChairDistance = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $stmt = $this->db->prepare(
-                'INSERT INTO chair_distances (chair_id, total_distance, total_distance_updated_at) VALUES (?, ? + ABS(? - ?) + ABS(? - ?), ?) ON DUPLICATE KEY UPDATE total_distance = VALUES(total_distance), total_distance_updated_at = VALUES(total_distance_updated_at)'
+                'INSERT INTO chair_distances (chair_id, total_distance, chair_location_id, latitude, longitude, created_at) VALUES (?, ? + ABS(? - ?) + ABS(? - ?), ?, ?, ?, CURRENT_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE total_distance = VALUES(total_distance), chair_location_id = VALUES(chair_location_id), latitude = VALUES(latitude), longitude = VALUES(longitude), created_at = VALUES(created_at)'
             );
             $stmt->execute([
                 $chair->id,
                 $chair_distance['total_distance'] ?? 0,
-                isset($latestChairLocation['latitude']) ? $chairLocation['latitude'] : 0,
-                $latestChairLocation['latitude'] ?? 0,
-                isset($latestChairLocation['longitude']) ? $chairLocation['longitude'] : 0,
-                $latestChairLocation['longitude'] ?? 0,
-                $chairLocation['created_at'],
+                isset($latestChairDistance['latitude']) ? $req->getLatitude() : 0,
+                $latestChairDistance['latitude'] ?? 0,
+                isset($latestChairDistance['longitude']) ? $req->getLongitude() : 0,
+                $latestChairDistance['longitude'] ?? 0,
+                $chairLocationId,
+                $req->getLatitude(),
+                $req->getLongitude(),
             ]);
 
             $stmt = $this->db->prepare(

@@ -51,7 +51,7 @@ SELECT id,
        created_at,
        updated_at,
        IFNULL(chair_distances.total_distance, 0) AS total_distance,
-       chair_distances.total_distance_updated_at
+       chair_distances.created_at AS total_distance_updated_at
 FROM chairs
 LEFT JOIN chair_distances ON chairs.id = chair_distances.chair_id
 WHERE owner_id = ?
