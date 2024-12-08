@@ -74,7 +74,7 @@ ORDER BY distance
             $scores = [];
             foreach ($candidates as $candidate) {
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 500) {
+                if ($score < 250) {
                     continue;
                 }
 
