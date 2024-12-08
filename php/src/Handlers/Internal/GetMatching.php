@@ -75,8 +75,8 @@ ORDER BY distance
                 $scores[] = $score;
             }
 
-            array_multisort($scores, SORT_ASC, SORT_NUMERIC, $candidate);
-            $item = $candidate[0];
+            array_multisort($scores, SORT_ASC, SORT_NUMERIC, $candidates);
+            $item = $candidates[0];
             $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
             $stmt->execute([$item['id'], $ride['id']]);
         }
