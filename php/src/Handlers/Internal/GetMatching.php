@@ -69,24 +69,16 @@ ORDER BY distance
             $stmt = $this->db->prepare('SELECT ST_Distance(rides.pickup_point, rides.destination_point) AS distance FROM rides WHERE id = ?');
             $stmt->execute([$ride['id']]);
             $distance = (double) $stmt->fetch(PDO::FETCH_ASSOC)['distance'];
-            $newCandidates = [];
             $scores = [];
             foreach ($candidates as $candidate) {
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 5) {
-                    continue;
-                }
-
-                $newCandidates[] = $candidate;
                 $scores[] = $score;
             }
 
-            if (count($newCandidates) !== 0) {
-                array_multisort($scores, SORT_ASC, SORT_NUMERIC, $newCandidates);
-                $item = $newCandidates[0];
-                $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
-                $stmt->execute([$item['id'], $ride['id']]);
-            }
+            array_multisort($scores, SORT_ASC, SORT_NUMERIC, $candidate);
+            $item = $candidate[0];
+            $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
+            $stmt->execute([$item['id'], $ride['id']]);
         }
 
         return $this->writeNoContent($response);
