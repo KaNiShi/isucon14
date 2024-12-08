@@ -116,7 +116,7 @@ abstract class AbstractHttpHandler
             // 無いなら他のクーポンを付与された順番に使う
             if ($coupon === false) {
                 $stmt = $db->prepare(
-                    'SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? AND ORDER BY created_at LIMIT 1'
+                    'SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1'
                 );
                 $stmt->execute([$userId]);
                 $coupon = $stmt->fetch(PDO::FETCH_ASSOC);
