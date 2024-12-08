@@ -55,7 +55,7 @@ ORDER BY distance
                 $empty = $result['COUNT(*) = 0'];
                 if ($empty) {
                     $candidates[] = $item;
-                    if (count($candidates) == 50) {
+                    if (count($candidates) == 30) {
                         break;
                     }
                 }
@@ -72,7 +72,7 @@ ORDER BY distance
             $scores = [];
             foreach ($candidates as $candidate) {
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 1.5) {
+                if ($score < 2.5) {
                     continue;
                 }
 
