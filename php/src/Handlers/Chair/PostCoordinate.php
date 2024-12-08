@@ -67,6 +67,11 @@ class PostCoordinate extends AbstractHttpHandler
                 $req->getLatitude(),
                 $req->getLongitude(),
             ]);
+            $stmt = $this->db->prepare(
+                'SELECT * FROM chair_distances WHERE chair_id = ?'
+            );
+            $stmt->execute([$chair->id]);
+            $latestChairDistance = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $stmt = $this->db->prepare(
                 'SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1'
