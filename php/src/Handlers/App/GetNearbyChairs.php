@@ -110,8 +110,8 @@ class GetNearbyChairs extends AbstractHttpHandler
                     ];
                 }
             }
-            $stmt = $this->db->prepare('SELECT ride_id FROM ride_statuses WHERE ride_id IN (?) AND status = "COMPLETED"');
-            $stmt->execute([implode(', ', array_map(fn($row) => $row['ride_id'], $results))]);
+            $stmt = $this->db->prepare(sprintf('SELECT ride_id FROM ride_statuses WHERE ride_id IN (%s) AND status = "COMPLETED"', implode(', ', array_map(fn($row) => '"' . $row['ride_id'] . '"', $results))));
+            $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $ride_ids = array_map(fn($row) => $row['ride_id'], $results);
             $nearbyChairs = [];
