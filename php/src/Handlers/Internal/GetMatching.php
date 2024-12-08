@@ -73,14 +73,8 @@ ORDER BY distance
             $newCandidates = [];
             $scores = [];
             foreach ($candidates as $candidate) {
-                $this->logger->info(print_r([
-                    'distance' => $distance,
-                    'speed' => $candidate['speed'],
-                    'c_distance' => $candidate['distance'],
-                    'score' => $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'],
-                ], true));
                 $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                if ($score < 100) {
+                if ($score < 500) {
                     continue;
                 }
 
