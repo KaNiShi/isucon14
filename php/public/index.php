@@ -24,6 +24,7 @@ $routes = require __DIR__ . '/../app/routes.php';
 $routes($app, $config);
 
 // Create Request object from globals
+\Slim\Factory\Psr17\Psr17FactoryProvider::setFactories([\Slim\Factory\Psr17\NyholmPsr17Factory::class]);
 $serverRequestCreator = ServerRequestCreatorFactory::create();
 $request = $serverRequestCreator->createServerRequestFromGlobals();
 
