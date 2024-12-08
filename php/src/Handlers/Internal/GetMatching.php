@@ -55,7 +55,7 @@ ORDER BY distance
                 $empty = $result['COUNT(*) = 0'];
                 if ($empty) {
                     $candidates[] = $item;
-                    if (count($candidates) == 10) {
+                    if (count($candidates) == 30) {
                         break;
                     }
                 }
