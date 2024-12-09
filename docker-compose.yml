@@ -1,0 +1,41 @@
+services:
+  php:
+    build:
+      context: ./docker/php
+    volumes:
+      - ./:/home/isucon/webapp/
+      - ./docker/php/isuride.php-fpm.conf:/usr/local/etc/php-fpm.d/isuride.php-fpm.conf
+    depends_on:
+      - db
+    ports:
+      - 9000:9000
+    working_dir: /home/isucon/
+  nginx:
+    image: nginx:1.24.0
+    depends_on:
+      - php
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - ./:/home/isucon/webapp/:cached
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:cached
+      - ./docker/nginx/sites-enabled/:/etc/nginx/sites-enabled/:cached
+      - ./docker/nginx/tls/:/etc/nginx/tls/:cached
+    working_dir: /home/isucon/
+  db:
+    image: mysql:8.0.28-oracle
+    ports:
+      - 3306:3306
+    volumes:
+      - ./:/home/isucon/webapp/
+      - ./docker/db/initdb.d:/docker-entrypoint-initdb.d:ro
+    environment:
+      MYSQL_DATABASE: isuride
+      MYSQL_USER: isucon
+      MYSQL_PASSWORD: isucon
+      MYSQL_ROOT_PASSWORD: "passwprd"
+      TZ: Asia/Tokyo
+  redis:
+    image: redis:latest
