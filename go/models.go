@@ -34,6 +34,7 @@ type ChairDistance struct {
 	ChairLocationId string    `db:"chair_location_id"`
 	Latitude        int       `db:"latitude"`
 	Longitude       int       `db:"longitude"`
+	Point           string    `db:"point"`
 	CreatedAt       time.Time `db:"created_at"`
 }
 
@@ -79,6 +80,8 @@ type Ride struct {
 	Evaluation           *int           `db:"evaluation"`
 	CreatedAt            time.Time      `db:"created_at"`
 	UpdatedAt            time.Time      `db:"updated_at"`
+	PickupPoint          string         `db:"pickup_point"`
+	DestinationPoint     string         `db:"destination_point"`
 }
 
 type RideStatus struct {
