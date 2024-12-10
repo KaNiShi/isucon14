@@ -831,6 +831,11 @@ type appGetNearbyChairsResponseChair struct {
 	CurrentCoordinate Coordinate `json:"current_coordinate"`
 }
 
+type appChairsById struct {
+	Chair ChairRide
+	Rides []string
+}
+
 func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	latStr := r.URL.Query().Get("latitude")
@@ -882,27 +887,24 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chairsById := make(map[string]*struct {
-		Chair ChairRide
-		Rides []string
-	})
+	chairsById := make(map[string]appChairsById)
 
 	searchRideIds := make([]string, 0)
 	for _, chair := range chairs {
 		_, ok := chairsById[chair.ID]
 
 		if !ok {
-			chairsById[chair.ID] = &struct {
-				Chair ChairRide
-				Rides []string
-			}{
+			chairsById[chair.ID] = appChairsById{
 				Chair: chair,
-				Rides: make([]string, 1),
+				Rides: make([]string, 0, 1),
 			}
 		}
 
 		if chair.RideId.Valid {
-			chairsById[chair.ID].Rides = append(chairsById[chair.ID].Rides, chair.RideId.String)
+			chairsById[chair.ID] = appChairsById{
+				Chair: chairsById[chair.ID].Chair,
+				Rides: append(chairsById[chair.ID].Rides, chair.RideId.String),
+			}
 			searchRideIds = append(searchRideIds, chair.RideId.String)
 		}
 	}

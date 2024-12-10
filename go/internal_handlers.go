@@ -37,7 +37,7 @@ ORDER BY distance`, ride.ID); err != nil {
 			return
 		}
 
-		candidates := make([]MacingChair, 30)
+		candidates := make([]MacingChair, 0, 30)
 		for _, matched := range matchedList {
 			empty := false
 			if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", matched.ID); err != nil {
