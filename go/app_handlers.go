@@ -907,7 +907,7 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	query, params, err := sqlx.In(`SELECT ride_id FROM ride_statuses WHERE ride_id IN (?) AND status = "COMPLETED"`, searchRideIds)
+	query, params, err := sqlx.In(`SELECT * FROM ride_statuses WHERE ride_id IN (?) AND status = "COMPLETED"`, searchRideIds)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
