@@ -887,9 +887,8 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chairsById := make(map[string]appChairsById)
-
-	searchRideIds := make([]string, 0)
+	chairsById := map[string]appChairsById{}
+	searchRideIds := []string{}
 	for _, chair := range chairs {
 		_, ok := chairsById[chair.ID]
 
@@ -931,7 +930,7 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 
 	rideIds := make(map[string]struct{})
 	for _, ride := range rideStatuses {
-		rideIds[ride.ID] = struct{}{}
+		rideIds[ride.RideID] = struct{}{}
 	}
 
 	nearbyChairs := []appGetNearbyChairsResponseChair{}
