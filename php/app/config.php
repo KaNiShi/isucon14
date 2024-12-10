@@ -9,7 +9,7 @@ use Monolog\Logger;
 
 return [
     'database' => function (): PDO {
-        $host = getenv('ISUCON_DB_HOST') ?: '127.0.0.1';
+        $host = getenv('ISUCON_DB_HOST') ?: 'db';
         $port = getenv('ISUCON_DB_PORT') ?: '3306';
         $username = getenv('ISUCON_DB_USER') ?: 'isucon';
         $password = getenv('ISUCON_DB_PASSWORD') ?: 'isucon';
