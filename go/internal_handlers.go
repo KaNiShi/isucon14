@@ -65,7 +65,7 @@ ORDER BY distance`, ride.ID); err != nil {
 		scoredList := make([]struct {
 			Chair MacingChair
 			Score float64
-		}, len(candidates))
+		}, 0, len(candidates))
 		for _, candidate := range candidates {
 			scoredList = append(scoredList, struct {
 				Chair MacingChair
