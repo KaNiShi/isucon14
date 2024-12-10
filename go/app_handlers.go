@@ -364,14 +364,14 @@ func appPostRides(w http.ResponseWriter, r *http.Request) {
 	var coupon Coupon
 	if rideCount == 1 {
 		// 初回利用で、初回利用クーポンがあれば必ず使う
-		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL FOR UPDATE", user.ID); err != nil {
+		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? AND code = 'CP_NEW2024' FOR UPDATE", user.ID); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
 
 			// 無ければ他のクーポンを付与された順番に使う
-			if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE", user.ID); err != nil {
+			if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1 FOR UPDATE", user.ID); err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
 					writeError(w, http.StatusInternalServerError, err)
 					return
@@ -398,7 +398,7 @@ func appPostRides(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// 他のクーポンを付与された順番に使う
-		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1 FOR UPDATE", user.ID); err != nil {
+		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1 FOR UPDATE", user.ID); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				writeError(w, http.StatusInternalServerError, err)
 				return
@@ -673,7 +673,7 @@ func appGetNotification(w http.ResponseWriter, r *http.Request) {
 	if err := tx.GetContext(ctx, ride, `SELECT * FROM rides WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`, user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeJSON(w, http.StatusOK, &appGetNotificationResponse{
-				RetryAfterMs: 30,
+				RetryAfterMs: 200,
 			})
 			return
 		}
@@ -720,7 +720,7 @@ func appGetNotification(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: ride.CreatedAt.UnixMilli(),
 			UpdateAt:  ride.UpdatedAt.UnixMilli(),
 		},
-		RetryAfterMs: 30,
+		RetryAfterMs: 200,
 	}
 
 	if ride.ChairID.Valid {
@@ -871,38 +871,74 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	chairs := []Chair{}
+	chairs := []ChairRide{}
 	err = tx.SelectContext(
 		ctx,
 		&chairs,
-		`SELECT * FROM chairs`,
+		`SELECT chairs.*, rides.id AS ride_id FROM chairs LEFT JOIN rides ON chairs.id = rides.chair_id WHERE chairs.is_active = 1 ORDER BY chairs.id, rides.created_at DESC`,
 	)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	nearbyChairs := []appGetNearbyChairsResponseChair{}
+	chairsById := make(map[string]*struct {
+		Chair ChairRide
+		Rides []string
+	})
+
+	searchRideIds := make([]string, 0)
 	for _, chair := range chairs {
-		if !chair.IsActive {
-			continue
+		_, ok := chairsById[chair.ID]
+
+		if !ok {
+			chairsById[chair.ID] = &struct {
+				Chair ChairRide
+				Rides []string
+			}{
+				Chair: chair,
+				Rides: make([]string, 1),
+			}
 		}
 
-		rides := []*Ride{}
-		if err := tx.SelectContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id = ? ORDER BY created_at DESC`, chair.ID); err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
+		if chair.RideId != nil {
+			chairsById[chair.ID].Rides = append(chairsById[chair.ID].Rides, *chair.RideId)
+			searchRideIds = append(searchRideIds, *chair.RideId)
 		}
+	}
+
+	query, params, err := sqlx.In(`SELECT ride_id FROM ride_statuses WHERE ride_id IN (?) AND status = "COMPLETED"`, searchRideIds)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	rideStatuses := []RideStatus{}
+	err = tx.SelectContext(
+		ctx,
+		&rideStatuses,
+		query,
+		params...,
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	rideIds := make(map[string]struct{})
+	for _, ride := range rideStatuses {
+		rideIds[ride.ID] = struct{}{}
+	}
+
+	nearbyChairs := []appGetNearbyChairsResponseChair{}
+	for _, chairData := range chairsById {
+		chair := chairData.Chair
+		rides := chairData.Rides
 
 		skip := false
-		for _, ride := range rides {
-			// 過去にライドが存在し、かつ、それが完了していない場合はスキップ
-			status, err := getLatestRideStatus(ctx, tx, ride.ID)
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, err)
-				return
-			}
-			if status != "COMPLETED" {
+		for _, rideId := range rides {
+			_, ok := rideIds[rideId]
+			if !ok {
 				skip = true
 				break
 			}
@@ -912,11 +948,11 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 最新の位置情報を取得
-		chairLocation := &ChairLocation{}
+		chairLocation := &ChairDistance{}
 		err = tx.GetContext(
 			ctx,
 			chairLocation,
-			`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
+			`SELECT * FROM chair_distances WHERE chair_id = ?`,
 			chair.ID,
 		)
 		if err != nil {
@@ -981,13 +1017,13 @@ func calculateDiscountedFare(ctx context.Context, tx *sqlx.Tx, userID string, ri
 		}
 	} else {
 		// 初回利用クーポンを最優先で使う
-		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE user_id = ? AND code = 'CP_NEW2024' AND used_by IS NULL", userID); err != nil {
+		if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? AND code = 'CP_NEW2024'", userID); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return 0, err
 			}
 
 			// 無いなら他のクーポンを付与された順番に使う
-			if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE user_id = ? AND used_by IS NULL ORDER BY created_at LIMIT 1", userID); err != nil {
+			if err := tx.GetContext(ctx, &coupon, "SELECT * FROM coupons WHERE used_by IS NULL AND user_id = ? ORDER BY created_at LIMIT 1", userID); err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
 					return 0, err
 				}

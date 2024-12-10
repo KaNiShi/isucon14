@@ -112,17 +112,33 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	chairLocationID := ulid.Make().String()
+	chairDistance := &ChairDistance{}
+
+	var calcLatitude, calcLongitude int
+	if err := tx.GetContext(ctx, chairDistance, `SELECT * FROM chair_distances WHERE chair_id = ?`, chair.ID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		calcLatitude = 0
+		calcLongitude = 0
+		chairDistance.Latitude = 0
+		chairDistance.Longitude = 0
+	} else {
+		calcLatitude = req.Latitude
+		calcLongitude = req.Longitude
+	}
+
 	if _, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)`,
-		chairLocationID, chair.ID, req.Latitude, req.Longitude,
+		`INSERT INTO chair_distances (chair_id, total_distance, chair_location_id, latitude, longitude, created_at) VALUES (?, ? + ABS(? - ?) + ABS(? - ?), ?, ?, ?, CURRENT_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE total_distance = VALUES(total_distance), chair_location_id = VALUES(chair_location_id), latitude = VALUES(latitude), longitude = VALUES(longitude), created_at = VALUES(created_at)`,
+		chair.ID, chairDistance.TotalDistance, calcLatitude, chairDistance.Latitude, calcLongitude, chairDistance.Longitude, chairLocationID, req.Latitude, req.Longitude,
 	); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	location := &ChairLocation{}
-	if err := tx.GetContext(ctx, location, `SELECT * FROM chair_locations WHERE id = ?`, chairLocationID); err != nil {
+	if err := tx.GetContext(ctx, chairDistance, `SELECT * FROM chair_distances WHERE chair_id = ?`, chair.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -162,7 +178,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, &chairPostCoordinateResponse{
-		RecordedAt: location.CreatedAt.UnixMilli(),
+		RecordedAt: chairDistance.CreatedAt.UnixMilli(),
 	})
 }
 
@@ -201,7 +217,7 @@ func chairGetNotification(w http.ResponseWriter, r *http.Request) {
 	if err := tx.GetContext(ctx, ride, `SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1`, chair.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeJSON(w, http.StatusOK, &chairGetNotificationResponse{
-				RetryAfterMs: 30,
+				RetryAfterMs: 200,
 			})
 			return
 		}
@@ -261,7 +277,7 @@ func chairGetNotification(w http.ResponseWriter, r *http.Request) {
 			},
 			Status: status,
 		},
-		RetryAfterMs: 30,
+		RetryAfterMs: 200,
 	})
 }
 
