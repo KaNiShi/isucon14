@@ -901,9 +901,9 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if chair.RideId != nil {
-			chairsById[chair.ID].Rides = append(chairsById[chair.ID].Rides, *chair.RideId)
-			searchRideIds = append(searchRideIds, *chair.RideId)
+		if chair.RideId.Valid {
+			chairsById[chair.ID].Rides = append(chairsById[chair.ID].Rides, chair.RideId.String)
+			searchRideIds = append(searchRideIds, chair.RideId.String)
 		}
 	}
 
