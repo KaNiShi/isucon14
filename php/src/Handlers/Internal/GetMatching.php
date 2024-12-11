@@ -46,22 +46,30 @@ WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuse
 
         // 取得できたリストのうち移動距離が長いものから処理をする
         array_multisort(array_column($rides, 'distance'), SORT_DESC, SORT_NUMERIC, $rides);
-        foreach ($rides as $ride) {
-            $chairScores = array_map(
-                fn($chair) => ($ride['distance'] + sqrt(pow($chair['latitude'] - $ride['pickup_latitude'], 2) + pow($chair['longitude'] - $ride['pickup_longitude'], 2))) / $chair['speed'],
-                $chairs
-            );
+        $this->db->beginTransaction();
+        try {
+            foreach ($rides as $ride) {
+                $chairScores = array_map(
+                    fn($chair) => ($ride['distance'] + sqrt(pow($chair['latitude'] - $ride['pickup_latitude'], 2) + pow($chair['longitude'] - $ride['pickup_longitude'], 2))) / $chair['speed'],
+                    $chairs
+                );
 
-            array_multisort($chairScores, SORT_ASC, SORT_NUMERIC, $chairs);
-            $chair = $chairs[0];
-            $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
-            $stmt->execute([$chair['id'], $ride['id']]);
+                array_multisort($chairScores, SORT_ASC, SORT_NUMERIC, $chairs);
+                $chair = $chairs[0];
+                $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
+                $stmt->execute([$chair['id'], $ride['id']]);
+                $stmt = $this->db->prepare('UPDATE chair_statuses SET is_available = 0 WHERE chair_id = ?');
+                $stmt->execute([$chair['id']]);
 
-            // 配椅子したものは除外
-            unset($chairs[0]);
-            if (!$chairs) {
-                break;
+                // 配椅子したものは除外
+                unset($chairs[0]);
+                if (!$chairs) {
+                    break;
+                }
             }
+            $this->db->commit();
+        } catch (\Exception $_) {
+            $this->db->rollBack();
         }
 
         return $this->writeNoContent($response);

@@ -73,9 +73,10 @@ DROP TRIGGER IF EXISTS update_chair_status_trigger;
 DELIMITER $$
 CREATE TRIGGER update_chair_status_trigger AFTER INSERT ON ride_statuses FOR EACH ROW
 BEGIN
-    INSERT INTO chair_statuses(chair_id, is_available)
-    VALUES ((SELECT chair_id FROM rides WHERE id = NEW.ride_id), IF(NEW.status = 'COMPLETED', 1, 0))
-    ON DUPLICATE KEY UPDATE
-        is_available = IF(NEW.status = 'COMPLETED', 1, 0);
+    IF NEW.status = 'COMPLETED' THEN
+        UPDATE chair_statuses
+        SET is_available = 1
+        WHERE chair_id = (SELECT chair_id FROM rides WHERE id = NEW.ride_id);
+    END IF;
 END$$
 DELIMITER ;
