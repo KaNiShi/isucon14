@@ -68,15 +68,3 @@ SELECT chair_id, IF(status = 'COMPLETED', 1, 0) FROM (
     WHERE chair_id IS NOT NULL
 ) work
 WHERE `row` = 1;
-
-DROP TRIGGER IF EXISTS update_chair_status_trigger;
-DELIMITER $$
-CREATE TRIGGER update_chair_status_trigger AFTER INSERT ON ride_statuses FOR EACH ROW
-BEGIN
-    IF NEW.status = 'COMPLETED' THEN
-        UPDATE chair_statuses
-        SET is_available = 1
-        WHERE chair_id = (SELECT chair_id FROM rides WHERE id = NEW.ride_id);
-    END IF;
-END$$
-DELIMITER ;
