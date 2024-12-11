@@ -58,7 +58,7 @@ WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuse
                 $chair = $chairs[0];
                 $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
                 $stmt->execute([$chair['id'], $ride['id']]);
-                $stmt = $this->db->prepare('UPDATE chair_statuses SET is_available = 0 WHERE chair_id = ?');
+                $stmt = $this->db->prepare('INSERT INTO chair_statuses(chair_id, is_available) VALUES (?, 0) ON DUPLICATE KEY UPDATE is_available = 0');
                 $stmt->execute([$chair['id']]);
 
                 // 配椅子したものは除外
