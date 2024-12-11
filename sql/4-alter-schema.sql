@@ -49,3 +49,33 @@ ON DUPLICATE KEY UPDATE
     latitude = VALUES(latitude),
     longitude = VALUES(longitude),
     created_at = VALUES(created_at);
+
+DROP TABLE IF EXISTS chair_statuses;
+CREATE TABLE chair_statuses
+(
+    chair_id VARCHAR(26) NOT NULL COMMENT '椅子ID',
+    is_available TINYINT(1) NOT NULL COMMENT '前の配椅子が完了済か',
+    PRIMARY KEY (chair_id),
+    INDEX idx_chair_is_available(chair_id, is_available)
+)
+    COMMENT = '椅子ステータステーブル';
+
+INSERT INTO `chair_statuses`(chair_id, is_available)
+SELECT chair_id, IF(status = 'COMPLETED', 1, 0) FROM (
+    SELECT rides.chair_id,ride_statuses.status, ROW_NUMBER() over (PARTITION BY rides.chair_id ORDER BY rides.created_at DESC) AS `row`
+    FROM ride_statuses
+    JOIN rides ON ride_statuses.ride_id = rides.id
+    WHERE chair_id IS NOT NULL
+) work
+WHERE `row` = 1;
+
+DROP TRIGGER IF EXISTS update_chair_status_trigger;
+DELIMITER $$
+CREATE TRIGGER update_chair_status_trigger AFTER INSERT ON ride_statuses FOR EACH ROW
+BEGIN
+    INSERT INTO chair_statuses(chair_id, is_available)
+    VALUES ((SELECT chair_id FROM rides WHERE id = NEW.ride_id), IF(NEW.status = 'COMPLETED', 1, 0))
+    ON DUPLICATE KEY UPDATE
+        is_available = IF(NEW.status = 'COMPLETED', 1, 0);
+END$$
+DELIMITER ;
