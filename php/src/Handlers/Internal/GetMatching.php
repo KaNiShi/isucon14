@@ -44,14 +44,18 @@ WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuse
             return $this->writeNoContent($response);
         }
 
+        $rideDistances = [];
+        foreach ($rides as $key => $ride) {
+            $rideDistances[] = $rides[$key]['distance'] = abs($ride['pickup_latitude'] - $ride['destination_latitude']) + abs($ride['pickup_longitude'] - $ride['destination_longitude']);
+        }
+
         // 取得できたリストのうち移動距離が長いものから処理をする
-        array_multisort(array_column($rides, 'distance'), SORT_DESC, SORT_NUMERIC, $rides);
+        array_multisort($rideDistances, SORT_DESC, SORT_NUMERIC, $rides);
         $this->db->beginTransaction();
         try {
             foreach ($rides as $ride) {
                 $chairScores = array_map(
-                    fn($chair) => (abs($ride['pickup_latitude'] - $ride['destination_latitude'])
-                        + abs($ride['pickup_longitude'] - $ride['destination_longitude'])
+                    fn($chair) => ($ride['distance']
                         + abs($chair['latitude'] - $ride['pickup_latitude'])
                         + abs($chair['longitude'] - $ride['pickup_longitude'])) / $chair['speed'],
                     $chairs
