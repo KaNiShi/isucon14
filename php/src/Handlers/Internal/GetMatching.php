@@ -31,23 +31,24 @@ class GetMatching extends AbstractHttpHandler
             return $this->writeNoContent($response);
         }
 
+        $this->db->beginTransaction();
+        try {
         $stmt = $this->db->prepare('
 SELECT chairs.*, chair_models.speed, chair_distances.latitude, chair_distances.longitude FROM chairs
     JOIN chair_models ON chairs.model = chair_models.name
     JOIN chair_distances ON chairs.id = chair_distances.chair_id
     LEFT JOIN chair_statuses ON chairs.id = chair_statuses.chair_id
 WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuses.is_available = 1)
-');
+FOR UPDATE');
         $stmt->execute();
         $chairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (!$chairs) {
+            $this->db->commit();
             return $this->writeNoContent($response);
         }
 
         // 取得できたリストのうち移動距離が長いものから処理をする
         array_multisort(array_column($rides, 'distance'), SORT_DESC, SORT_NUMERIC, $rides);
-        $this->db->beginTransaction();
-        try {
             foreach ($rides as $ride) {
                 $chairScores = array_map(
                     fn($chair) => ($ride['distance'] + sqrt(pow($chair['latitude'] - $ride['pickup_latitude'], 2) + pow($chair['longitude'] - $ride['pickup_longitude'], 2))) / $chair['speed'],
