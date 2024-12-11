@@ -23,7 +23,7 @@ class GetMatching extends AbstractHttpHandler
         ResponseInterface $response,
     ): ResponseInterface {
         // MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-        $stmt = $this->db->prepare('SELECT *, ST_Distance(pickup_point, destination_point) AS distance FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 100');
+        $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 100');
         $stmt->execute();
         $rides = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -50,7 +50,10 @@ WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuse
         try {
             foreach ($rides as $ride) {
                 $chairScores = array_map(
-                    fn($chair) => ($ride['distance'] + sqrt(pow($chair['latitude'] - $ride['pickup_latitude'], 2) + pow($chair['longitude'] - $ride['pickup_longitude'], 2))) / $chair['speed'],
+                    fn($chair) => (abs($ride['pickup_latitude'] - $ride['destination_latitude'])
+                        + abs($ride['pickup_longitude'] - $ride['destination_longitude'])
+                        + abs($chair['latitude'] - $ride['pickup_latitude'])
+                        + abs($chair['longitude'] - $ride['pickup_longitude'])) / $chair['speed'],
                     $chairs
                 );
 
