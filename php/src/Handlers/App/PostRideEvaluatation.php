@@ -103,8 +103,6 @@ class PostRideEvaluatation extends AbstractHttpHandler
                 'INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)'
             );
             $stmt->execute([(string)$statusID, $rideId, 'COMPLETED']);
-            $stmt = $this->db->prepare('UPDATE chair_statuses SET is_available = 1 WHERE chair_id = ?');
-            $stmt->execute([$ride->chairId]);
 
             $stmt = $this->db->prepare('SELECT * FROM rides WHERE id = ?');
             $stmt->execute([$rideId]);

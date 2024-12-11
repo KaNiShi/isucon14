@@ -78,6 +78,10 @@ class GetNotification extends AbstractHttpHandler
                     'UPDATE ride_statuses SET chair_sent_at = CURRENT_TIMESTAMP(6) WHERE id = ?'
                 );
                 $stmt->execute([$yetSentRideStatus['id']]);
+                if ($yetSentRideStatus['status'] === 'COMPLETED') {
+                    $stmt = $this->db->prepare('UPDATE chair_statuses SET is_available = 1 WHERE chair_id = ?');
+                    $stmt->execute([$chair->id]);
+                }
             }
             $this->db->commit();
 
