@@ -23,7 +23,7 @@ class GetMatching extends AbstractHttpHandler
         ResponseInterface $response,
     ): ResponseInterface {
         // MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-        $stmt = $this->db->prepare('SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 100');
+        $stmt = $this->db->prepare('SELECT *, ST_Distance(pickup_point, destination_point) AS distance FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 100');
         $stmt->execute();
         $rides = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -31,54 +31,37 @@ class GetMatching extends AbstractHttpHandler
             return $this->writeNoContent($response);
         }
 
+        $stmt = $this->db->prepare('
+SELECT chairs.*, chair_models.speed, chair_distances.latitude, chair_distances.longitude FROM chairs
+    JOIN chair_models ON chairs.model = chair_models.name
+    JOIN chair_distances ON chairs.id = chair_distances.chair_id
+    LEFT JOIN chair_statuses ON chairs.id = chair_statuses.chair_id
+WHERE is_active = TRUE AND (chair_statuses.is_available IS NULL OR chair_statuses.is_available = 1)
+');
+        $stmt->execute();
+        $chairs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$chairs) {
+            return $this->writeNoContent($response);
+        }
+
+        // 取得できたリストのうち移動距離が長いものから処理をする
+        array_multisort(array_column($rides, 'distance'), SORT_DESC, SORT_NUMERIC, $rides);
         foreach ($rides as $ride) {
-            $stmt = $this->db->prepare('
-SELECT chairs.*, chair_models.speed, ST_Distance((SELECT pickup_point FROM rides WHERE id = ?), chair_distances.point) AS distance
-FROM chairs
-JOIN chair_distances ON chairs.id = chair_distances.chair_id
-JOIN chair_models ON chairs.model = chair_models.name
-WHERE is_active = TRUE
-ORDER BY distance
-            ');
-            $stmt->execute([$ride['id']]);
-            $matched = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            if (!$matched) {
-                return $this->writeNoContent($response);
-            }
+            $chairScores = array_map(
+                fn($chair) => ($ride['distance'] + sqrt(pow($chair['latitude'] - $ride['pickup_latitude'], 2) + pow($chair['longitude'] - $ride['pickup_longitude'], 2))) / $chair['speed'],
+                $chairs
+            );
 
-            $candidates = [];
-            foreach ($matched as $item) {
-                $stmt = $this->db->prepare(
-                    'SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE'
-                );
-                $stmt->execute([$item['id']]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                $empty = $result['COUNT(*) = 0'];
-                if ($empty) {
-                    $candidates[] = $item;
-                    if (count($candidates) == 30) {
-                        break;
-                    }
-                }
-            }
+            array_multisort($chairScores, SORT_ASC, SORT_NUMERIC, $chairs);
+            $chair = $chairs[0];
+            $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
+            $stmt->execute([$chair['id'], $ride['id']]);
 
-            if (count($candidates) == 0) {
+            // 配椅子したものは除外
+            unset($chairs[0]);
+            if (!$chairs) {
                 break;
             }
-
-            $stmt = $this->db->prepare('SELECT ST_Distance(rides.pickup_point, rides.destination_point) AS distance FROM rides WHERE id = ?');
-            $stmt->execute([$ride['id']]);
-            $distance = (double) $stmt->fetch(PDO::FETCH_ASSOC)['distance'];
-            $scores = [];
-            foreach ($candidates as $candidate) {
-                $score = $distance / $candidate['speed'] + $candidate['distance'] / $candidate['speed'];
-                $scores[] = $score;
-            }
-
-            array_multisort($scores, SORT_ASC, SORT_NUMERIC, $candidates);
-            $item = $candidates[0];
-            $stmt = $this->db->prepare('UPDATE rides SET chair_id = ? WHERE id = ?');
-            $stmt->execute([$item['id'], $ride['id']]);
         }
 
         return $this->writeNoContent($response);

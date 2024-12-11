@@ -145,3 +145,24 @@ CREATE TABLE coupons
   COMMENT 'クーポンテーブル';
 
 CREATE INDEX idx_user_used_create ON coupons(used_by, user_id, created_at);
+
+DROP TABLE IF EXISTS chair_statuses;
+CREATE TABLE chair_statuses
+(
+    chair_id VARCHAR(26) NOT NULL COMMENT '椅子ID',
+    is_available TINYINT(1) NOT NULL COMMENT '前の配椅子が完了済か',
+    PRIMARY KEY (chair_id),
+    INDEX idx_chair_is_available(chair_id, is_available)
+)
+  COMMENT = '椅子ステータステーブル';
+
+DROP TRIGGER IF EXISTS update_chair_status_trigger;
+DELIMITER $$
+CREATE TRIGGER update_chair_status_trigger AFTER INSERT ON ride_statuses FOR EACH ROW
+    BEGIN
+        INSERT INTO chair_statuses(chair_id, is_available)
+        VALUES ((SELECT chair_id FROM rides WHERE id = NEW.ride_id), IF(NEW.status = 'COMPLETED', 1, 0))
+        ON DUPLICATE KEY UPDATE
+             is_available = IF(NEW.status = 'COMPLETED', 1, 0);
+    END$$
+DELIMITER ;
