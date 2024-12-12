@@ -153,14 +153,11 @@ class PostRideEvaluatation extends AbstractHttpHandler
                 $ride->destinationLongitude
             );
             try {
-                $paymentGatewayURL = apcu_entry('payment_gateway_url', function () {
-                    $stmt = $this->db->prepare('SELECT value FROM settings WHERE name = \'payment_gateway_url\'');
-                    $stmt->execute();
-                    return $stmt->fetch(PDO::FETCH_ASSOC);
-                });
+                $stmt = $this->db->prepare('SELECT value FROM settings WHERE name = \'payment_gateway_url\'');
+                $stmt->execute();
+                $paymentGatewayURL = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$paymentGatewayURL) {
                     $this->db->rollBack();
-                    apcu_delete('payment_gateway_url');
                     return (new ErrorResponse())->write(
                         $response,
                         StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR,

@@ -38,20 +38,8 @@ abstract class AbstractHttpHandler
         return $response->withStatus(StatusCodeInterface::STATUS_NO_CONTENT);
     }
 
-    protected function getLatestRideStatus(PDO $db, string $rideId, bool $useCache = false): string
+    protected function getLatestRideStatus(PDO $db, string $rideId): string
     {
-        if ($useCache) {
-            return apcu_entry($rideId . '_status', function () use ($db, $rideId) {
-                $stmt = $db->prepare('SELECT status FROM ride_statuses WHERE ride_id = ? ORDER BY created_at DESC LIMIT 1');
-                $stmt->execute([$rideId]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$result) {
-                    return '';
-                }
-                return $result['status'];
-            });
-        }
-
         $stmt = $db->prepare('SELECT status FROM ride_statuses WHERE ride_id = ? ORDER BY created_at DESC LIMIT 1');
         $stmt->execute([$rideId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
