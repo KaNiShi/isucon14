@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace IsuRide\PaymentGateway;
 
-use Closure;
 use Fig\Http\Message\StatusCodeInterface;
-use IsuRide\Result\Ride;
+use IsuRide\Database\Model\Ride;
 use RuntimeException;
 use Throwable;
 
@@ -16,15 +15,14 @@ readonly class PostPayment
      * @param string $paymentGatewayURL
      * @param string $token
      * @param PostPaymentRequest $param
-     * @param Closure(): Ride $retrieveRideRequestsOrderByCreatedAtAsc
+     * @param Ride $ride
      * @return void
-     * @throws Throwable
      */
     public function execute(
         string $paymentGatewayURL,
         string $token,
         PostPaymentRequest $param,
-        Closure $retrieveRideRequestsOrderByCreatedAtAsc
+        Ride $ride
     ): void {
         $b = json_encode($param);
         if ($b === false) {
@@ -40,6 +38,7 @@ readonly class PostPayment
                 $headers = [
                     'Content-Type: application/json',
                     'Authorization: Bearer ' . $token,
+                    'Idempotency-Key: "' . $ride->id . '"',
                 ];
 
                 $ch = curl_init($url);
@@ -58,66 +57,9 @@ readonly class PostPayment
                 }
                 curl_close($ch);
 
-                if ($http_code !== StatusCodeInterface::STATUS_NO_CONTENT) {
-                    // エラーが返ってきても成功している場合があるので、社内決済マイクロサービスに問い合わせ
-                    $headers = [
-                        'Authorization: Bearer ' . $token,
-                    ];
-
-                    $ch = curl_init($paymentGatewayURL . "/payments");
-                    curl_setopt($ch, CURLOPT_HTTPGET, true);
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-                    $response = curl_exec($ch);
-                    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-                    if ($response === false) {
-                        $error = curl_error($ch);
-                        curl_close($ch);
-                        throw new RuntimeException("Curl error on GET request: " . $error);
-                    }
-
-                    curl_close($ch);
-
-                    // GET /payments は障害と関係なく200が返るので、200以外は回復不能なエラーとする
-                    if ($http_code !== 200) {
-                        throw new RuntimeException("[GET /payments] unexpected status code ($http_code)");
-                    }
-
-                    $paymentsData = json_decode($response, true);
-                    if ($paymentsData === null) {
-                        throw new RuntimeException('Failed to decode payments response: ' . json_last_error_msg());
-                    }
-
-                    $payments = [];
-                    foreach ($paymentsData as $paymentData) {
-                        $payments[] = new GetPaymentsResponseOne(
-                            (int)$paymentData['amount'],
-                            (string)$paymentData['status']
-                        );
-                    }
-                    $rideRequests = $retrieveRideRequestsOrderByCreatedAtAsc();
-                    if ($rideRequests->error !== null) {
-                        throw $rideRequests->error;
-                    }
-
-                    if (count($rideRequests->rides) !== count($payments)) {
-                        throw new RuntimeException(
-                            sprintf(
-                                'unexpected number of payments: %d != %d',
-                                count($rideRequests->rides),
-                                count($payments)
-                            ),
-                            0,
-                            new RuntimeException('errored upstream')
-                        );
-                    }
-                    // 正常終了
+                if ($http_code === StatusCodeInterface::STATUS_NO_CONTENT || $http_code === StatusCodeInterface::STATUS_CONFLICT) {
                     return;
                 }
-                // 正常終了
-                return;
             } catch (Throwable $e) {
                 if ($retry < 5) {
                     $retry++;

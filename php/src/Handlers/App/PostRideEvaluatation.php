@@ -170,30 +170,7 @@ class PostRideEvaluatation extends AbstractHttpHandler
                     new PostPaymentRequest(
                         amount: $fare
                     ),
-                    function () use ($ride): \IsuRide\Result\Ride {
-                        $stmt = $this->db->prepare('SELECT * FROM rides WHERE user_id = ? ORDER BY created_at ASC');
-                        $stmt->execute([$ride->userId]);
-                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                        if (!$result) {
-                            return new \IsuRide\Result\Ride([], new Exception('rides not found'));
-                        }
-                        $rides = [];
-                        foreach ($result as $row) {
-                             $rides[] = new Ride(
-                                 id: $row['id'],
-                                 userId: $row['user_id'],
-                                 chairId: $row['chair_id'],
-                                 pickupLatitude: $row['pickup_latitude'],
-                                 pickupLongitude: $row['pickup_longitude'],
-                                 destinationLatitude: $row['destination_latitude'],
-                                 destinationLongitude: $row['destination_longitude'],
-                                 evaluation: $row['evaluation'],
-                                 createdAt: $row['created_at'],
-                                 updatedAt: $row['updated_at']
-                             );
-                        }
-                        return new \IsuRide\Result\Ride($rides);
-                    }
+                    $ride,
                 );
             } catch (Exception $e) {
                 $this->db->rollBack();
