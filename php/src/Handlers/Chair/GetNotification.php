@@ -50,7 +50,7 @@ class GetNotification extends AbstractHttpHandler
             $stmt->execute([$ride['id']]);
             $yetSentRideStatus = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$yetSentRideStatus) {
-                $status = $this->getLatestRideStatus($this->db, $ride['id']);
+                $status = $this->getLatestRideStatus($this->db, $ride['id'], true);
                 if ($status === '') {
                     $this->db->rollBack();
                     return (new ErrorResponse())->write(
@@ -60,6 +60,7 @@ class GetNotification extends AbstractHttpHandler
                     );
                 }
             } else {
+                apcu_delete($ride['id'] . '_status');
                 $status = $yetSentRideStatus['status'];
             }
 
