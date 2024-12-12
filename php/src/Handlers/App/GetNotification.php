@@ -22,7 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 class GetNotification extends AbstractHttpHandler
 {
 
-    private const int RETRY_AFTER_MS = 50;
+    private const int RETRY_AFTER_MS = 100;
 
     public function __construct(
         private readonly PDO $db,
