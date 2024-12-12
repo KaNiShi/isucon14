@@ -160,7 +160,7 @@ class PostRideEvaluatation extends AbstractHttpHandler
                 });
                 if (!$paymentGatewayURL) {
                     $this->db->rollBack();
-                    apc_delete('payment_gateway_url');
+                    apcu_delete('payment_gateway_url');
                     return (new ErrorResponse())->write(
                         $response,
                         StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR,
