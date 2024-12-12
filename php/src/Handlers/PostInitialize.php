@@ -70,6 +70,8 @@ class PostInitialize extends AbstractHttpHandler
                 )
             );
         }
+
+        apcu_clear_cache();
         return $this->writeJson($response, new PostInitialize200Response([
             'language' => 'php',
         ]));
